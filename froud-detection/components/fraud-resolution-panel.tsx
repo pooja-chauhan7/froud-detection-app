@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import type { FraudAlert, ResolutionAction } from '@/lib/types'
 import { executeResolutionAction, getResolutionTimeline } from '@/lib/alert-service'
 import { AlertCircle, CheckCircle2, Clock, Shield, AlertTriangle } from 'lucide-react'
@@ -61,26 +62,49 @@ export function FraudResolutionPanel({
   ]
 
   const handleResolve = async () => {
-    if (!selectedAction) return
+    if (!selectedAction) {
+      toast.error('Please select a resolution action')
+      return
+    }
 
     setLoading(true)
     try {
-      const result = executeResolutionAction(
-        alert,
-        selectedAction as ResolutionAction['type'],
-        'ANALYST',
-        notes || 'Resolved via resolution panel'
-      )
+      const actionLabel = actionOptions.find(a => a.id === selectedAction)?.label || selectedAction
+      
+      toast.promise(
+        new Promise((resolve) => {
+          const result = executeResolutionAction(
+            alert,
+            selectedAction as ResolutionAction['type'],
+            'ANALYST',
+            notes || 'Resolved via resolution panel'
+          )
 
-      if (result.success && result.updatedAlert) {
-        onResolve?.(alert.id, result.updatedAlert)
-        setTimeout(() => {
-          setLoading(false)
-          onClose?.()
-        }, 500)
-      }
+          if (result.success && result.updatedAlert) {
+            onResolve?.(alert.id, result.updatedAlert)
+            setTimeout(() => {
+              setLoading(false)
+              onClose?.()
+              resolve(true)
+            }, 500)
+          } else {
+            setLoading(false)
+            throw new Error('Failed to resolve alert')
+          }
+        }),
+        {
+          loading: `Resolving fraud alert with action: ${actionLabel}...`,
+          success: () => {
+            return `✓ Alert successfully resolved! Action: ${actionLabel}`
+          },
+          error: (err) => {
+            return `✗ Failed to resolve alert: ${err.message}`
+          }
+        }
+      )
     } catch (error) {
       console.error('Resolution failed:', error)
+      toast.error('Failed to resolve fraud alert. Please try again.')
       setLoading(false)
     }
   }

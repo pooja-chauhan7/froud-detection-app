@@ -16,11 +16,16 @@ import { NotificationAlerts } from '@/components/notification-alerts'
 import { CardManagement } from '@/components/card-management'
 import { SuspiciousLocations } from '@/components/suspicious-locations'
 import { FraudResolutionPanel } from '@/components/fraud-resolution-panel'
+import { BulkResolutionActions } from '@/components/bulk-resolution-actions'
+import { ResolutionStatsDashboard } from '@/components/resolution-stats-dashboard'
+import { ExportResolutionReports } from '@/components/export-resolution-reports'
+import { ApprovalWorkflow } from '@/components/approval-workflow'
 import type { FraudAlert } from '@/lib/types'
 import { useStream } from '@/hooks/use-stream'
 import { 
   LayoutDashboard, UserPlus, FileSpreadsheet, Users, 
-  Map, BarChart3, Shield, Bell, CreditCard, MapPin
+  Map, BarChart3, Shield, Bell, CreditCard, MapPin,
+  Zap, TrendingUp, Download, Lock
 } from 'lucide-react'
 
 export default function FraudDetectionDashboard() {
@@ -52,13 +57,29 @@ export default function FraudDetectionDashboard() {
 
   const [activeTab, setActiveTab] = useState('dashboard')
   const [selectedAlertForResolution, setSelectedAlertForResolution] = useState<FraudAlert | null>(null)
+  const [selectedAlertsForBulk, setSelectedAlertsForBulk] = useState<Set<string>>(new Set())
+  const [showBulkResolution, setShowBulkResolution] = useState(false)
+  const [showStats, setShowStats] = useState(false)
+  const [showExport, setShowExport] = useState(false)
+  const [showApprovalWorkflow, setShowApprovalWorkflow] = useState(false)
   const unresolvedAlerts = fraudAlerts.filter(a => !a.resolved).length
 
   const handleResolveAlert = (alertId: string, updatedAlert: FraudAlert) => {
-    // Update the alert state
     resolveAlert(alertId, updatedAlert.notes)
     setSelectedAlertForResolution(null)
   }
+
+  const toggleAlertSelection = (alertId: string) => {
+    const newSelected = new Set(selectedAlertsForBulk)
+    if (newSelected.has(alertId)) {
+      newSelected.delete(alertId)
+    } else {
+      newSelected.add(alertId)
+    }
+    setSelectedAlertsForBulk(newSelected)
+  }
+
+  const selectedAlerts = fraudAlerts.filter(a => selectedAlertsForBulk.has(a.id))
 
   return (
     <div className="min-h-screen bg-background">
@@ -130,6 +151,10 @@ export default function FraudDetectionDashboard() {
                   {unresolvedAlerts > 9 ? '9+' : unresolvedAlerts}
                 </span>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="resolution" className="flex items-center gap-1.5 py-2 text-xs">
+              <Zap className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Resolution</span>
             </TabsTrigger>
           </TabsList>
 
@@ -301,6 +326,146 @@ export default function FraudDetectionDashboard() {
               <TransactionFeed transactions={transactions.filter(t => t.isFraud)} />
             </div>
           </TabsContent>
+
+          {/* Resolution Management Tab */}
+          <TabsContent value="resolution" className="mt-6">
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-foreground">Resolution Management</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Manage fraud resolutions, view statistics, export reports, and perform bulk actions
+              </p>
+            </div>
+
+            {/* Quick Action Buttons */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              <button
+                onClick={() => setShowStats(!showStats)}
+                className="p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all flex items-center justify-center gap-2 font-semibold text-sm text-blue-900"
+              >
+                <TrendingUp size={18} />
+                <span className="hidden sm:inline">Statistics</span>
+              </button>
+
+              <button
+                onClick={() => setShowExport(!showExport)}
+                className="p-4 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-all flex items-center justify-center gap-2 font-semibold text-sm text-green-900"
+              >
+                <Download size={18} />
+                <span className="hidden sm:inline">Export</span>
+              </button>
+
+              <button
+                onClick={() => setShowBulkResolution(selectedAlerts.length > 0)}
+                disabled={selectedAlerts.length === 0}
+                className={`p-4 rounded-lg transition-all flex items-center justify-center gap-2 font-semibold text-sm ${
+                  selectedAlerts.length > 0
+                    ? 'bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-900'
+                    : 'bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                <Zap size={18} />
+                <span className="hidden sm:inline">Bulk ({selectedAlerts.length})</span>
+              </button>
+
+              <button
+                onClick={() => setShowApprovalWorkflow(true)}
+                className="p-4 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-all flex items-center justify-center gap-2 font-semibold text-sm text-orange-900"
+              >
+                <Lock size={18} />
+                <span className="hidden sm:inline">Workflow</span>
+              </button>
+            </div>
+
+            {/* Stats Dashboard */}
+            {showStats && (
+              <div className="mb-8 p-6 bg-white border border-gray-200 rounded-lg">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">Resolution Statistics</h3>
+                  <button
+                    onClick={() => setShowStats(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <ResolutionStatsDashboard alerts={fraudAlerts} />
+              </div>
+            )}
+
+            {/* Export Reports */}
+            {showExport && (
+              <div className="mb-8 p-6 bg-white border border-gray-200 rounded-lg">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900">Export Reports</h3>
+                  <button
+                    onClick={() => setShowExport(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <ExportResolutionReports alerts={fraudAlerts} />
+              </div>
+            )}
+
+            {/* Alerts with Selection for Bulk Resolution */}
+            <div className="mt-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">
+                Fraud Alerts ({selectedAlerts.length} selected)
+              </h3>
+              <div className="space-y-3">
+                {fraudAlerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    onClick={() => toggleAlertSelection(alert.id)}
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      selectedAlertsForBulk.has(alert.id)
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <input
+                            type="checkbox"
+                            checked={selectedAlertsForBulk.has(alert.id)}
+                            onChange={() => toggleAlertSelection(alert.id)}
+                            className="w-4 h-4 cursor-pointer"
+                          />
+                          <span className="font-semibold text-gray-900">#{alert.id.slice(-6)}</span>
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            alert.severity === 'critical' ? 'bg-red-100 text-red-700' :
+                            alert.severity === 'high' ? 'bg-orange-100 text-orange-700' :
+                            alert.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-blue-100 text-blue-700'
+                          }`}>
+                            {alert.severity.toUpperCase()}
+                          </span>
+                          {alert.resolutionStatus && (
+                            <span className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded-full capitalize">
+                              {alert.resolutionStatus.replace('_', ' ')}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-700">{alert.accountHolder} - ₹{alert.amount.toLocaleString()}</p>
+                        <p className="text-xs text-gray-500 mt-1">{alert.location.city}, {alert.location.country}</p>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedAlertForResolution(alert)
+                        }}
+                        className="px-3 py-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                      >
+                        Resolve
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </TabsContent>
         </Tabs>
 
         {/* Fraud Resolution Panel Modal */}
@@ -321,6 +486,66 @@ export default function FraudDetectionDashboard() {
                   alert={selectedAlertForResolution}
                   onResolve={handleResolveAlert}
                   onClose={() => setSelectedAlertForResolution(null)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bulk Resolution Modal */}
+        {showBulkResolution && selectedAlerts.length > 0 && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900">Bulk Resolution</h3>
+                <button
+                  onClick={() => setShowBulkResolution(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="p-6">
+                <BulkResolutionActions
+                  selectedAlerts={selectedAlerts}
+                  onResolve={(updatedAlerts) => {
+                    setShowBulkResolution(false)
+                    setSelectedAlertsForBulk(new Set())
+                  }}
+                  onClose={() => {
+                    setShowBulkResolution(false)
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Approval Workflow Modal */}
+        {showApprovalWorkflow && selectedAlertForResolution && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900">Approval Workflow</h3>
+                <button
+                  onClick={() => setShowApprovalWorkflow(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="p-6">
+                <ApprovalWorkflow
+                  alert={selectedAlertForResolution}
+                  proposedAction="block_transaction"
+                  onApprove={(alert) => {
+                    handleResolveAlert(alert.id, alert)
+                    setShowApprovalWorkflow(false)
+                  }}
+                  onReject={() => {
+                    setShowApprovalWorkflow(false)
+                  }}
+                  onClose={() => setShowApprovalWorkflow(false)}
                 />
               </div>
             </div>
