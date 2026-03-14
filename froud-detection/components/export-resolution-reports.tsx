@@ -297,7 +297,7 @@ export function ExportResolutionReports({ alerts }: ExportResolutionReportsProps
         }`}
       >
         <Download size={18} />
-        {loading ? 'Exporting...' : `Export ${filteredAlerts.length} Alert${filteredAlerts.length !== 1 ? 's'} as ${exportFormat.toUpperCase()}`}
+        {loading ? 'Exporting...' : 'Export ' + filteredAlerts.length + ' Alert' + (filteredAlerts.length !== 1 ? 's' : '') + ' as ' + exportFormat.toUpperCase()}
       </button>
     </div>
   )
