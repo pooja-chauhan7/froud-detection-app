@@ -354,18 +354,20 @@ export default function FraudDetectionDashboard() {
                 <span className="hidden sm:inline">Export</span>
               </button>
 
-              <button
-                onClick={() => setShowBulkResolution(selectedAlerts.length > 0)}
-                disabled={selectedAlerts.length === 0}
-                className={`p-4 rounded-lg transition-all flex items-center justify-center gap-2 font-semibold text-sm ${
-                  selectedAlerts.length > 0
-                    ? 'bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-900'
-                    : 'bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                <Zap size={18} />
-                <span className="hidden sm:inline">Bulk ({selectedAlerts.length})</span>
-              </button>
+              {(() => {
+                const hasSelected = selectedAlerts.length > 0
+                const bulkBtnClass = 'p-4 rounded-lg transition-all flex items-center justify-center gap-2 font-semibold text-sm ' + (hasSelected ? 'bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-900' : 'bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed')
+                return (
+                  <button
+                    onClick={() => setShowBulkResolution(hasSelected)}
+                    disabled={!hasSelected}
+                    className={bulkBtnClass}
+                  >
+                    <Zap size={18} />
+                    <span className="hidden sm:inline">Bulk ({selectedAlerts.length})</span>
+                  </button>
+                )
+              })()}
 
               <button
                 onClick={() => setShowApprovalWorkflow(true)}
@@ -414,34 +416,36 @@ export default function FraudDetectionDashboard() {
                 Fraud Alerts ({selectedAlerts.length} selected)
               </h3>
               <div className="space-y-3">
-                {fraudAlerts.map((alert) => (
-                  <div
-                    key={alert.id}
-                    onClick={() => toggleAlertSelection(alert.id)}
-                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      selectedAlertsForBulk.has(alert.id)
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <input
-                            type="checkbox"
-                            checked={selectedAlertsForBulk.has(alert.id)}
-                            onChange={() => toggleAlertSelection(alert.id)}
-                            className="w-4 h-4 cursor-pointer"
-                          />
-                          <span className="font-semibold text-gray-900">#{alert.id.slice(-6)}</span>
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            alert.severity === 'critical' ? 'bg-red-100 text-red-700' :
-                            alert.severity === 'high' ? 'bg-orange-100 text-orange-700' :
-                            alert.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-blue-100 text-blue-700'
-                          }`}>
-                            {alert.severity.toUpperCase()}
-                          </span>
+                {fraudAlerts.map((alert) => {
+                  const isSelected = selectedAlertsForBulk.has(alert.id)
+                  const alertDivClass = 'p-4 border-2 rounded-lg cursor-pointer transition-all ' + (isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300')
+                  
+                  const getSeverityClass = () => {
+                    if (alert.severity === 'critical') return 'bg-red-100 text-red-700'
+                    if (alert.severity === 'high') return 'bg-orange-100 text-orange-700'
+                    if (alert.severity === 'medium') return 'bg-yellow-100 text-yellow-700'
+                    return 'bg-blue-100 text-blue-700'
+                  }
+
+                  return (
+                    <div
+                      key={alert.id}
+                      onClick={() => toggleAlertSelection(alert.id)}
+                      className={alertDivClass}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleAlertSelection(alert.id)}
+                              className="w-4 h-4 cursor-pointer"
+                            />
+                            <span className="font-semibold text-gray-900">#{alert.id.slice(-6)}</span>
+                            <span className={'text-xs px-2 py-1 rounded-full ' + getSeverityClass()}>
+                              {alert.severity.toUpperCase()}
+                            </span>
                           {alert.resolutionStatus && (
                             <span className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded-full capitalize">
                               {alert.resolutionStatus.replace('_', ' ')}
@@ -451,18 +455,19 @@ export default function FraudDetectionDashboard() {
                         <p className="text-sm text-gray-700">{alert.accountHolder} - ₹{alert.amount.toLocaleString()}</p>
                         <p className="text-xs text-gray-500 mt-1">{alert.location.city}, {alert.location.country}</p>
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedAlertForResolution(alert)
-                        }}
-                        className="px-3 py-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
-                      >
-                        Resolve
-                      </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedAlertForResolution(alert)
+                          }}
+                          className="px-3 py-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                        >
+                          Resolve
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           </TabsContent>

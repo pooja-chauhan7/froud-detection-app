@@ -213,20 +213,20 @@ export function ExportResolutionReports({ alerts }: ExportResolutionReportsProps
             { id: 'all' as const, label: 'All Alerts', count: alertStats.total },
             { id: 'resolved' as const, label: 'Resolved', count: alertStats.resolved },
             { id: 'unresolved' as const, label: 'Unresolved', count: alertStats.unresolved }
-          ].map(option => (
-            <button
-              key={option.id}
-              onClick={() => setFilterType(option.id)}
-              className={`p-3 rounded-lg border-2 transition-all text-center ${
-                filterType === option.id
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}
-            >
-              <p className="font-semibold text-gray-900">{option.label}</p>
-              <p className="text-sm text-gray-600">{option.count} alerts</p>
-            </button>
-          ))}
+          ].map(option => {
+            const isSelected = filterType === option.id
+            const btnClass = 'p-3 rounded-lg border-2 transition-all text-center ' + (isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300')
+            return (
+              <button
+                key={option.id}
+                onClick={() => setFilterType(option.id)}
+                className={btnClass}
+              >
+                <p className="font-semibold text-gray-900">{option.label}</p>
+                <p className="text-sm text-gray-600">{option.count} alerts</p>
+              </button>
+            )
+          })}
         </div>
       </div>
 
@@ -236,35 +236,37 @@ export function ExportResolutionReports({ alerts }: ExportResolutionReportsProps
           Export Format
         </label>
         <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => setExportFormat('csv')}
-            className={`p-4 rounded-lg border-2 transition-all text-left ${
-              exportFormat === 'csv'
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 bg-white hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <Sheet className="w-5 h-5 text-green-600" />
-              <span className="font-semibold text-gray-900">CSV Format</span>
-            </div>
-            <p className="text-xs text-gray-600">Excel-compatible spreadsheet</p>
-          </button>
+          {(() => {
+            const csvClass = 'p-4 rounded-lg border-2 transition-all text-left ' + (exportFormat === 'csv' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300')
+            return (
+              <button
+                onClick={() => setExportFormat('csv')}
+                className={csvClass}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <Sheet className="w-5 h-5 text-green-600" />
+                  <span className="font-semibold text-gray-900">CSV Format</span>
+                </div>
+                <p className="text-xs text-gray-600">Excel-compatible spreadsheet</p>
+              </button>
+            )
+          })()}
 
-          <button
-            onClick={() => setExportFormat('json')}
-            className={`p-4 rounded-lg border-2 transition-all text-left ${
-              exportFormat === 'json'
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 bg-white hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <FileText className="w-5 h-5 text-blue-600" />
-              <span className="font-semibold text-gray-900">JSON Format</span>
-            </div>
-            <p className="text-xs text-gray-600">Structured data format</p>
-          </button>
+          {(() => {
+            const jsonClass = 'p-4 rounded-lg border-2 transition-all text-left ' + (exportFormat === 'json' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300')
+            return (
+              <button
+                onClick={() => setExportFormat('json')}
+                className={jsonClass}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="w-5 h-5 text-blue-600" />
+                  <span className="font-semibold text-gray-900">JSON Format</span>
+                </div>
+                <p className="text-xs text-gray-600">Structured data format</p>
+              </button>
+            )
+          })()}
         </div>
       </div>
 
@@ -287,18 +289,22 @@ export function ExportResolutionReports({ alerts }: ExportResolutionReportsProps
       </div>
 
       {/* Action Buttons */}
-      <button
-        onClick={handleExport}
-        disabled={loading || filteredAlerts.length === 0}
-        className={`w-full py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
-          loading || filteredAlerts.length === 0
-            ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-            : 'bg-blue-600 text-white hover:bg-blue-700'
-        }`}
-      >
-        <Download size={18} />
-        {loading ? 'Exporting...' : 'Export ' + filteredAlerts.length + ' Alert' + (filteredAlerts.length !== 1 ? 's' : '') + ' as ' + exportFormat.toUpperCase()}
-      </button>
+      {(() => {
+        const isDisabled = loading || filteredAlerts.length === 0
+        const btnClass = 'w-full py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ' + (isDisabled ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700')
+        const alertWord = filteredAlerts.length === 1 ? 'Alert' : 'Alerts'
+        const exportText = loading ? 'Exporting...' : 'Export ' + filteredAlerts.length + ' ' + alertWord + ' as ' + exportFormat.toUpperCase()
+        return (
+          <button
+            onClick={handleExport}
+            disabled={isDisabled}
+            className={btnClass}
+          >
+            <Download size={18} />
+            {exportText}
+          </button>
+        )
+      })()}
     </div>
   )
 }
