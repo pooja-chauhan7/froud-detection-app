@@ -53,6 +53,39 @@ function formatCurrency(amount: number): string {
   }).format(amount)
 }
 
+function getMarkerColorByResolutionStatus(hasUnresolvedFraud: boolean, resolutionStatus?: string): { bg: string; border: string; glow: string } {
+  if (!hasUnresolvedFraud) {
+    return {
+      bg: 'bg-accent',
+      border: 'border-accent',
+      glow: 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'
+    }
+  }
+
+  if (resolutionStatus === 'false_positive') {
+    return {
+      bg: 'bg-blue-500',
+      border: 'border-blue-500',
+      glow: 'shadow-[0_0_15px_rgba(59,130,246,0.5)]'
+    }
+  }
+
+  if (resolutionStatus === 'confirmed_fraud') {
+    return {
+      bg: 'bg-orange-500',
+      border: 'border-orange-500',
+      glow: 'shadow-[0_0_15px_rgba(249,115,22,0.5)]'
+    }
+  }
+
+  // Default: pending or no status
+  return {
+    bg: 'bg-destructive',
+    border: 'border-destructive',
+    glow: 'shadow-[0_0_15px_rgba(239,68,68,0.5)]'
+  }
+}
+
 export function FraudMap({ locationData, fraudAlerts }: FraudMapProps) {
   const [selectedCity, setSelectedCity] = useState<LocationData | null>(null)
   const [pulsingCities, setPulsingCities] = useState<Set<string>>(new Set())
@@ -171,6 +204,18 @@ export function FraudMap({ locationData, fraudAlerts }: FraudMapProps) {
             const isPulsing = pulsingCities.has(loc.city)
             const size = Math.min(loc.transactions.length * 1.5, 12) + 6
 
+            // Check resolution status of fraud alerts in this location
+            const locAlerts = fraudAlerts.filter(a => 
+              a.location.city === loc.city && a.location.country === loc.country
+            )
+            const unresolvedAlerts = locAlerts.filter(a => !a.resolved)
+            const hasUnresolved = unresolvedAlerts.length > 0
+            const latestResolutionStatus = locAlerts
+              .filter(a => a.resolutionStatus)
+              .slice(-1)[0]?.resolutionStatus
+
+            const markerColors = getMarkerColorByResolutionStatus(hasUnresolved, latestResolutionStatus)
+
             return (
               <div
                 key={`${loc.lat}-${loc.lng}`}
@@ -186,8 +231,9 @@ export function FraudMap({ locationData, fraudAlerts }: FraudMapProps) {
                   <>
                     <div 
                       className={cn(
-                        "absolute rounded-full bg-destructive/20",
-                        isPulsing && "animate-ping"
+                        "absolute rounded-full",
+                        isPulsing && "animate-ping",
+                        hasUnresolved ? "bg-destructive/20" : "bg-blue-500/20"
                       )} 
                       style={{ 
                         width: `${size + 16}px`, 
@@ -197,7 +243,10 @@ export function FraudMap({ locationData, fraudAlerts }: FraudMapProps) {
                       }} 
                     />
                     <div 
-                      className="absolute rounded-full bg-destructive/10 animate-pulse" 
+                      className={cn(
+                        "absolute rounded-full animate-pulse",
+                        hasUnresolved ? "bg-destructive/10" : "bg-blue-500/10"
+                      )} 
                       style={{ 
                         width: `${size + 24}px`, 
                         height: `${size + 24}px`, 
@@ -213,13 +262,13 @@ export function FraudMap({ locationData, fraudAlerts }: FraudMapProps) {
                   className={cn(
                     "relative z-10 rounded-full border-2 transition-all duration-300 hover:scale-125 flex items-center justify-center",
                     hasFraud 
-                      ? "bg-destructive border-destructive shadow-[0_0_15px_rgba(239,68,68,0.5)]" 
+                      ? `${markerColors.bg} ${markerColors.border} ${markerColors.glow}` 
                       : "bg-accent border-accent shadow-[0_0_8px_rgba(34,197,94,0.3)]"
                   )}
                   style={{ width: `${size}px`, height: `${size}px` }}
                 >
                   {hasFraud && loc.fraudCount > 1 && (
-                    <span className="text-[8px] font-bold text-destructive-foreground">{loc.fraudCount}</span>
+                    <span className="text-[8px] font-bold text-white">{loc.fraudCount}</span>
                   )}
                 </div>
 
@@ -257,15 +306,19 @@ export function FraudMap({ locationData, fraudAlerts }: FraudMapProps) {
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-2.5 h-2.5 rounded-full bg-accent border border-accent" />
-                <span className="text-foreground">Normal Transaction</span>
+                <span className="text-foreground">Normal</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-2.5 h-2.5 rounded-full bg-destructive border border-destructive animate-pulse" />
-                <span className="text-foreground">Fraud Detected</span>
+                <span className="text-foreground">Unresolved Fraud</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
-                <div className="w-6 h-0.5 border-t border-dashed border-destructive/50" />
-                <span className="text-foreground">Fraud Link</span>
+                <div className="w-2.5 h-2.5 rounded-full bg-blue-500 border border-blue-500 animate-pulse" />
+                <span className="text-foreground">False Positive</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-2.5 h-2.5 rounded-full bg-orange-500 border border-orange-500 animate-pulse" />
+                <span className="text-foreground">Confirmed</span>
               </div>
             </div>
           </div>

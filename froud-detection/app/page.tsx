@@ -15,6 +15,8 @@ import { UserTracking } from '@/components/user-tracking'
 import { NotificationAlerts } from '@/components/notification-alerts'
 import { CardManagement } from '@/components/card-management'
 import { SuspiciousLocations } from '@/components/suspicious-locations'
+import { FraudResolutionPanel } from '@/components/fraud-resolution-panel'
+import type { FraudAlert } from '@/lib/types'
 import { useStream } from '@/hooks/use-stream'
 import { 
   LayoutDashboard, UserPlus, FileSpreadsheet, Users, 
@@ -42,11 +44,21 @@ export default function FraudDetectionDashboard() {
     requestOTP,
     verifyTransactionOTP,
     blockUserCard,
-    unblockCard
+    unblockCard,
+    // Resolution features
+    applyResolutionAction,
+    generateRecommendation
   } = useStream()
 
   const [activeTab, setActiveTab] = useState('dashboard')
+  const [selectedAlertForResolution, setSelectedAlertForResolution] = useState<FraudAlert | null>(null)
   const unresolvedAlerts = fraudAlerts.filter(a => !a.resolved).length
+
+  const handleResolveAlert = (alertId: string, updatedAlert: FraudAlert) => {
+    // Update the alert state
+    resolveAlert(alertId, updatedAlert.notes)
+    setSelectedAlertForResolution(null)
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -129,7 +141,11 @@ export default function FraudDetectionDashboard() {
             
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <TransactionFeed transactions={transactions} />
-              <FraudAlerts alerts={fraudAlerts} onResolve={resolveAlert} />
+              <FraudAlerts 
+                alerts={fraudAlerts} 
+                onResolve={resolveAlert}
+                onOpenPanel={setSelectedAlertForResolution}
+              />
             </div>
             
             <FraudMap locationData={locationDataArray} fraudAlerts={fraudAlerts} />
@@ -196,7 +212,11 @@ export default function FraudDetectionDashboard() {
             </div>
             <div className="grid gap-6 lg:grid-cols-2">
               <NotificationAlerts notifications={notifications} />
-              <FraudAlerts alerts={fraudAlerts} onResolve={resolveAlert} />
+              <FraudAlerts 
+                alerts={fraudAlerts} 
+                onResolve={resolveAlert}
+                onOpenPanel={setSelectedAlertForResolution}
+              />
             </div>
           </TabsContent>
 
@@ -273,11 +293,39 @@ export default function FraudDetectionDashboard() {
               </p>
             </div>
             <div className="grid gap-6 lg:grid-cols-2">
-              <FraudAlerts alerts={fraudAlerts} onResolve={resolveAlert} />
+              <FraudAlerts 
+                alerts={fraudAlerts} 
+                onResolve={resolveAlert}
+                onOpenPanel={setSelectedAlertForResolution}
+              />
               <TransactionFeed transactions={transactions.filter(t => t.isFraud)} />
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Fraud Resolution Panel Modal */}
+        {selectedAlertForResolution && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900">Resolve Fraud Alert</h3>
+                <button
+                  onClick={() => setSelectedAlertForResolution(null)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="p-6">
+                <FraudResolutionPanel
+                  alert={selectedAlertForResolution}
+                  onResolve={handleResolveAlert}
+                  onClose={() => setSelectedAlertForResolution(null)}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <footer className="border-t border-border mt-8 pt-6 pb-4">

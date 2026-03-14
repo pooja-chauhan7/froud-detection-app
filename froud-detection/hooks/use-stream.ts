@@ -11,11 +11,14 @@ import {
   verifyOTP,
   blockCard,
   detectSuspiciousLocation,
+  executeResolutionAction,
+  generateRiskBasedRecommendation,
   type AlertNotification,
   type OTPVerification,
   type CardStatus,
   type SuspiciousLocation
 } from '@/lib/alert-service'
+import type { ResolutionAction } from '@/lib/types'
 
 interface StreamState {
   transactions: Transaction[]
@@ -291,7 +294,14 @@ export function useStream() {
 
       // Create fraud alert and send notifications if fraud detected
       if (transaction.isFraud) {
-        const alert = createFraudAlert(transaction)
+        const baseAlert = createFraudAlert(transaction)
+        const recommendation = generateRiskBasedRecommendation(baseAlert)
+        const alert = {
+          ...baseAlert,
+          resolutionStatus: 'pending' as const,
+          riskBasedRecommendation: recommendation,
+          resolutionHistory: []
+        }
         newFraudAlerts.unshift(alert)
         if (newFraudAlerts.length > 100) {
           newFraudAlerts.pop()
@@ -471,6 +481,55 @@ export function useStream() {
     }))
   }, [])
 
+  // Apply fraud resolution action
+  const applyResolutionAction = useCallback((
+    alertId: string,
+    actionType: ResolutionAction['type'],
+    notes?: string
+  ) => {
+    setState(prev => {
+      const alertIndex = prev.fraudAlerts.findIndex(a => a.id === alertId)
+      if (alertIndex === -1) return prev
+
+      const alert = prev.fraudAlerts[alertIndex]
+      const result = executeResolutionAction(
+        alert,
+        actionType,
+        'ANALYST',
+        notes || ''
+      )
+
+      if (result.updatedAlert) {
+        const newAlerts = [...prev.fraudAlerts]
+        newAlerts[alertIndex] = result.updatedAlert
+        return {
+          ...prev,
+          fraudAlerts: newAlerts
+        }
+      }
+
+      return prev
+    })
+  }, [])
+
+  // Generate AI recommendation for an alert
+  const generateRecommendation = useCallback((alertId: string) => {
+    setState(prev => {
+      const alert = prev.fraudAlerts.find(a => a.id === alertId)
+      if (!alert) return prev
+
+      const recommendation = generateRiskBasedRecommendation(alert)
+      return {
+        ...prev,
+        fraudAlerts: prev.fraudAlerts.map(a =>
+          a.id === alertId
+            ? { ...a, riskBasedRecommendation: recommendation }
+            : a
+        )
+      }
+    })
+  }, [])
+
   const clearAllData = useCallback(() => {
     setState(prev => ({
       ...prev,
@@ -518,6 +577,9 @@ export function useStream() {
     blockUserCard,
     unblockCard,
     checkSuspiciousLocation,
-    getOTPForTransaction: (txnId: string) => state.pendingOTPs.get(txnId)
+    getOTPForTransaction: (txnId: string) => state.pendingOTPs.get(txnId),
+    // New resolution functions
+    applyResolutionAction,
+    generateRecommendation
   }
 }

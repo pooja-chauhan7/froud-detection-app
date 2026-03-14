@@ -72,6 +72,15 @@ export interface Transaction {
   processingTime?: number
 }
 
+export interface ResolutionAction {
+  id: string
+  type: 'block_transaction' | 'flag_account' | 'mark_safe' | 'report_authority'
+  timestamp: Date
+  executedBy: string
+  notes: string
+  status: 'pending' | 'completed' | 'failed'
+}
+
 export interface FraudAlert {
   id: string
   transactionId: string
@@ -95,6 +104,14 @@ export interface FraudAlert {
   resolvedAt?: Date
   notes?: string
   recommendedAction?: string
+  resolutionStatus?: 'pending' | 'investigating' | 'confirmed_fraud' | 'false_positive' | 'resolved'
+  resolutionAction?: ResolutionAction
+  resolutionHistory?: ResolutionAction[]
+  riskBasedRecommendation?: {
+    action: string
+    priority: 'immediate' | 'high' | 'medium' | 'low'
+    reason: string
+  }
 }
 
 export interface StreamMetrics {

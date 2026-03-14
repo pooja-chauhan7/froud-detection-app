@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 interface FraudAlertsProps {
   alerts: FraudAlert[]
   onResolve: (alertId: string) => void
+  onOpenPanel?: (alert: FraudAlert) => void
 }
 
 function formatCurrency(amount: number): string {
@@ -59,7 +60,7 @@ function getSeverityBorder(severity: FraudAlert['severity']): string {
   }
 }
 
-export function FraudAlerts({ alerts, onResolve }: FraudAlertsProps) {
+export function FraudAlerts({ alerts, onResolve, onOpenPanel }: FraudAlertsProps) {
   const unresolvedCount = alerts.filter(a => !a.resolved).length
   const criticalCount = alerts.filter(a => !a.resolved && a.severity === 'critical').length
   const highCount = alerts.filter(a => !a.resolved && a.severity === 'high').length
@@ -111,7 +112,7 @@ export function FraudAlerts({ alerts, onResolve }: FraudAlertsProps) {
                   )}
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <AlertTriangle className={cn(
                         "h-4 w-4 flex-shrink-0",
                         alert.resolved ? "text-muted-foreground" : "text-destructive"
@@ -122,17 +123,24 @@ export function FraudAlerts({ alerts, onResolve }: FraudAlertsProps) {
                       <span className="text-[10px] text-muted-foreground font-mono">
                         #{alert.id.slice(-8)}
                       </span>
+                      {alert.resolutionStatus && (
+                        <Badge variant="secondary" className="text-[10px] capitalize">
+                          {alert.resolutionStatus.replace('_', ' ')}
+                        </Badge>
+                      )}
                     </div>
                     {!alert.resolved ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-xs hover:bg-accent/20 hover:text-accent"
-                        onClick={() => onResolve(alert.id)}
-                      >
-                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                        Resolve
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs hover:bg-blue-200/30 hover:text-blue-600"
+                          onClick={() => onOpenPanel?.(alert)}
+                        >
+                          <Shield className="h-3 w-3 mr-1" />
+                          Resolve
+                        </Button>
+                      </div>
                     ) : (
                       <Badge variant="outline" className="bg-accent/20 text-accent border-accent/30 text-[10px]">
                         Resolved

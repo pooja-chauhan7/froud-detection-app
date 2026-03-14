@@ -1,5 +1,7 @@
 // Alert Service for SMS/Email notifications and Card Management
 
+import type { ResolutionAction, FraudAlert } from './types'
+
 export interface AlertNotification {
   id: string
   type: 'sms' | 'email' | 'both'
@@ -361,4 +363,96 @@ export function getAlertStats(alerts: AlertNotification[]): {
     otpSent: alerts.filter(a => a.alertType === 'otp_sent').length,
     cardsBlocked: alerts.filter(a => a.alertType === 'card_blocked').length
   }
+}
+
+// Resolution Service Functions
+
+// Create resolution action
+export function createResolutionAction(
+  type: ResolutionAction['type'],
+  executedBy: string = 'ANALYST',
+  notes: string = ''
+): ResolutionAction {
+  return {
+    id: generateId('RES'),
+    type,
+    timestamp: new Date(),
+    executedBy,
+    notes,
+    status: 'pending'
+  }
+}
+
+// Generate AI-based recommendation based on severity and risk
+export function generateRiskBasedRecommendation(alert: Omit<FraudAlert, 'resolutionStatus' | 'resolutionAction' | 'resolutionHistory' | 'riskBasedRecommendation'>) {
+  const severityMap: Record<string, { action: string; priority: 'immediate' | 'high' | 'medium' | 'low' }> = {
+    critical: {
+      action: 'block_transaction',
+      priority: 'immediate'
+    },
+    high: {
+      action: 'flag_account',
+      priority: 'high'
+    },
+    medium: {
+      action: 'flag_account',
+      priority: 'medium'
+    },
+    low: {
+      action: 'mark_safe',
+      priority: 'low'
+    }
+  }
+
+  const recommendation = severityMap[alert.severity] || { action: 'flag_account', priority: 'high' as const }
+  const reasonMap: Record<string, string> = {
+    block_transaction: 'Critical fraud indicators detected. Immediate transaction blocking recommended.',
+    flag_account: 'Multiple risk factors identified. Account requires investigation and monitoring.',
+    mark_safe: 'Low risk factors. Transaction can be safely approved with monitoring.',
+    report_authority: 'Suspicious patterns suggest organized fraud. Authority reporting recommended.'
+  }
+
+  return {
+    action: recommendation.action,
+    priority: recommendation.priority,
+    reason: reasonMap[recommendation.action] || 'Review recommended based on transaction analysis.'
+  }
+}
+
+// Execute resolution action
+export function executeResolutionAction(
+  alert: FraudAlert,
+  actionType: ResolutionAction['type'],
+  executedBy: string,
+  notes: string
+): { success: boolean; message: string; updatedAlert?: FraudAlert } {
+  const action = createResolutionAction(actionType, executedBy, notes)
+  
+  const actionOutcomes: Record<ResolutionAction['type'], string> = {
+    block_transaction: 'Transaction blocked and flagged for review.',
+    flag_account: 'Account flagged for investigation and monitoring.',
+    mark_safe: 'Alert marked as false positive. Merchant added to whitelist.',
+    report_authority: 'Case escalated to financial crime authorities.'
+  }
+
+  const updatedAlert: FraudAlert = {
+    ...alert,
+    resolved: true,
+    resolvedBy: executedBy,
+    resolvedAt: new Date(),
+    resolutionStatus: actionType === 'mark_safe' ? 'false_positive' : 'confirmed_fraud',
+    resolutionAction: { ...action, status: 'completed' },
+    resolutionHistory: [...(alert.resolutionHistory || []), action]
+  }
+
+  return {
+    success: true,
+    message: actionOutcomes[actionType],
+    updatedAlert
+  }
+}
+
+// Get resolution timeline
+export function getResolutionTimeline(alert: FraudAlert): ResolutionAction[] {
+  return alert.resolutionHistory || (alert.resolutionAction ? [alert.resolutionAction] : [])
 }
